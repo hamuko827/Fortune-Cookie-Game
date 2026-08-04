@@ -6,6 +6,10 @@ public class BowlCookie : MonoBehaviour
     public Vector3 centerScale = new Vector3(1.5f, 1.5f, 1.5f);
     public float moveSpeed = 5f;
 
+    public GameObject cookieHalfLeft;
+    public GameObject cookieHalfRight;
+    public CookieDrag cookieDrag; // NEW: direct reference, drag in Inspector
+
     private bool isSelected = false;
     private bool hasArrived = false;
 
@@ -28,7 +32,6 @@ public class BowlCookie : MonoBehaviour
             Quaternion targetRotation = Quaternion.Euler(0, 0, 0);
             transform.rotation = Quaternion.Lerp(transform.rotation, targetRotation, moveSpeed * Time.deltaTime);
 
-            // check distance to center to know when it's "close enough"
             if (Vector3.Distance(transform.position, centerPosition) < 0.01f)
             {
                 hasArrived = true;
@@ -39,7 +42,13 @@ public class BowlCookie : MonoBehaviour
 
     void OnArriveAtCenter()
     {
-        gameObject.SetActive(false); // hide this bowl cookie
-        // TODO: show the shared CookieHalf_Left / CookieHalf_Right here
+        gameObject.SetActive(false);
+        cookieHalfLeft.SetActive(true);
+        cookieHalfRight.SetActive(true);
+
+        if (cookieDrag != null)
+        {
+            cookieDrag.isActive = true; // NEW: only now allow dragging
+        }
     }
 }
