@@ -1,34 +1,156 @@
 using UnityEngine;
+using TMPro;
+
 public class CookieDrag : MonoBehaviour
 {
+    [Header("References")]
     public Transform leftHalf;
     public Transform rightHalf;
-    public GameObject fortunePaper;
+    public Transform fortunePaperTransform;
+
+    public FortuneDatabase fortuneDatabase;
+    public TextMeshProUGUI fortuneText;
+    public GameObject fortuneTextObject;
+    public Transform fortuneTextTransform;
+
+    [Header("Fortune Text Position")]
+    public Vector3 fortuneTextOffset;
+
+
+    [Header("Dragging")]
+    public LayerMask draggableLayer;
     public float openThreshold = 1.5f;
     public float maxTiltAngle = 15f;
+
+
+    [Header("Paper")]
+    public float closedPaperScaleX = 0.6f;
+    public float paperOpenScaleX = 2f;
+
+
+    [Header("Break")]
+    public float throwRightDistance = 2f;
+    public float dropDistance = 3f;
+    public float dropSpeed = 5f;
+
+
+    [Header("Center Adjustment")]
+    public float leftShiftAmount = 0.35f;
+    public float dragLeftShiftAmount = 0.15f;
+    public float shiftSpeed = 5f;
+
+
+    [Header("Drop Tilt")]
+    public float dropTiltAngle = -25f;
+    public float dropTiltSpeed = 5f;
+
+
+    [Header("Overlay")]
     public CanvasGroup revealOverlay;
-    public float fadeSpeed = 2f;
     public float delayBeforeOverlay = 2f;
-    private bool isOpened = false;
-    private bool isFading = false;
-    private bool isWaiting = false;
-    private float waitTimer = 0f;
+    public float fadeSpeed = 2f;
+
+
+    [HideInInspector]
     public bool isActive = false;
-    private float closedGap;
-    private Quaternion leftBaseRotation;
-    private Quaternion rightBaseRotation;
+
+
+    private bool isDragging;
+    private bool isOpened;
+    private bool isDropping;
+    private bool isWaiting;
+    private bool isFading;
+    private bool isShifting;
+
+
+    private float waitTimer;
+
+
+    private Vector3 leftDragStartLocalPos;
+
+    private Vector3 rightBaseLocalPos;
+    private Quaternion rightBaseRot;
+
+
+    private Vector3 leftTargetPos;
+    private Vector3 paperTargetPos;
+
+
+    private float dragDistance;
+
+    private Vector3 dropTarget;
+
     void Start()
     {
-        closedGap = Vector3.Distance(leftHalf.position, rightHalf.position);
-        leftBaseRotation = leftHalf.rotation;
-        rightBaseRotation = rightHalf.rotation;
+        leftDragStartLocalPos = leftHalf.localPosition;
+
+        rightBaseLocalPos = rightHalf.localPosition;
+        rightBaseRot = rightHalf.localRotation;
+
+        leftTargetPos = leftHalf.position;
+        paperTargetPos = fortunePaperTransform.position;
+        revealOverlay.alpha = 0f;
+
+        if (fortuneTextObject != null)
+        {
+            fortuneTextObject.SetActive(false);
+        }
     }
+
     void Update()
     {
-        if (!isActive) return;
+        if (!isActive)
+            return;
+        FollowFortunePaper();
+
+        if (isShifting)
+        {
+            leftHalf.position = Vector3.MoveTowards(
+                leftHalf.position,
+                leftTargetPos,
+                shiftSpeed * Time.deltaTime
+            );
+
+            fortunePaperTransform.position = Vector3.MoveTowards(
+                fortunePaperTransform.position,
+                paperTargetPos,
+                shiftSpeed * Time.deltaTime
+            );
+
+            if (Vector3.Distance(leftHalf.position, leftTargetPos) < 0.01f)
+            {
+                isShifting = false;
+            }
+        }
+
+        if (isDropping)
+        {
+            rightHalf.position = Vector3.MoveTowards(
+                rightHalf.position,
+                dropTarget,
+                dropSpeed * Time.deltaTime
+            );
+
+            rightHalf.rotation = Quaternion.Lerp(
+                rightHalf.rotation,
+                rightBaseRot * Quaternion.Euler(0, 0, dropTiltAngle),
+                dropTiltSpeed * Time.deltaTime
+            );
+
+            if (Vector3.Distance(rightHalf.position, dropTarget) < 0.01f)
+            {
+                isDropping = false;
+                isWaiting = true;
+                waitTimer = 0f;
+            }
+            return;
+        }
+
         if (isWaiting)
         {
             waitTimer += Time.deltaTime;
+
+
             if (waitTimer >= delayBeforeOverlay)
             {
                 isWaiting = false;
@@ -36,90 +158,162 @@ public class CookieDrag : MonoBehaviour
             }
             return;
         }
+
         if (isFading)
         {
-            revealOverlay.alpha = Mathf.MoveTowards(revealOverlay.alpha, 1f, fadeSpeed * Time.deltaTime);
-            if (revealOverlay.alpha >= 1f)
-            {
-                isFading = false;
-            }
+            revealOverlay.alpha = Mathf.MoveTowards(
+                revealOverlay.alpha,
+                1f,
+                fadeSpeed * Time.deltaTime
+            );
             return;
         }
-        if (isOpened) return;
-#if UNITY_ANDROID || UNITY_IOS
-        HandleMobileInput();
-#else
-        HandlePCInput();
-#endif
+
+        if (isOpened)
+            return;
+        HandleDrag();
     }
-void HandlePCInput()
-{
-    if (Input.GetMouseButton(0))
+
+    void FollowFortunePaper()
     {
-        Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        mouseWorldPos.z = 0;
-
-        float dragOffset = (mouseWorldPos.x - rightHalf.position.x) * 0.5f;
-
-        Vector3 newRightPos = rightHalf.position + new Vector3(dragOffset, 0, 0);
-        Vector3 newLeftPos = leftHalf.position - new Vector3(dragOffset, 0, 0);
-
-        // NEW: only allow the move if it doesn't shrink the gap below the closed distance
-        float newGap = Vector3.Distance(newLeftPos, newRightPos);
-        if (newGap >= closedGap)
+        if (fortuneTextTransform != null && fortunePaperTransform != null)
         {
-            rightHalf.position = newRightPos;
-            leftHalf.position = newLeftPos;
+            fortuneTextTransform.position =
+                fortunePaperTransform.TransformPoint(fortuneTextOffset);
+            fortuneTextTransform.rotation =
+                fortunePaperTransform.rotation;
         }
-
-        ApplyTilt();
-        CheckOpenDistance();
     }
-}
-
-void HandleMobileInput()
-{
-    if (Input.touchCount >= 2)
+    public void ActivateFortune()
     {
-        Touch touch1 = Input.GetTouch(0);
-        Touch touch2 = Input.GetTouch(1);
-
-        Vector3 touch1WorldPos = Camera.main.ScreenToWorldPoint(touch1.position);
-        Vector3 touch2WorldPos = Camera.main.ScreenToWorldPoint(touch2.position);
-        touch1WorldPos.z = 0;
-        touch2WorldPos.z = 0;
-
-        Vector3 newLeftPos = new Vector3(touch1WorldPos.x, leftHalf.position.y, 0);
-        Vector3 newRightPos = new Vector3(touch2WorldPos.x, rightHalf.position.y, 0);
-
-        // NEW: same clamp check for mobile
-        float newGap = Vector3.Distance(newLeftPos, newRightPos);
-        if (newGap >= closedGap)
+        if (fortuneText != null && fortuneDatabase != null)
         {
-            leftHalf.position = newLeftPos;
-            rightHalf.position = newRightPos;
+            fortuneText.text =
+                fortuneDatabase.GetRandomFortune();
         }
-
-        ApplyTilt();
-        CheckOpenDistance();
-    }
-}
-    void ApplyTilt()
-    {
-        float currentGap = Vector3.Distance(leftHalf.position, rightHalf.position);
-        float openFraction = Mathf.Clamp01((currentGap - closedGap) / (openThreshold - closedGap));
-        leftHalf.rotation = leftBaseRotation * Quaternion.Euler(0, 0, openFraction * maxTiltAngle);
-        rightHalf.rotation = rightBaseRotation * Quaternion.Euler(0, 0, -openFraction * maxTiltAngle);
-    }
-    void CheckOpenDistance()
-    {
-        float distance = Vector3.Distance(leftHalf.position, rightHalf.position);
-        if (distance >= openThreshold)
+        if (fortuneTextObject != null)
         {
-            isOpened = true;
-            isWaiting = true;
-            waitTimer = 0f;
-            Debug.Log("Fortune revealed, waiting to show overlay...");
+            fortuneTextObject.SetActive(true);
         }
+    }
+    void HandleDrag()
+    {
+        if (Input.GetMouseButtonDown(0))
+        {
+            Vector2 mousePos =
+                Camera.main.ScreenToWorldPoint(
+                    Input.mousePosition
+                );
+            Collider2D hit =
+                Physics2D.OverlapPoint(
+                    mousePos,
+                    draggableLayer
+                );
+            if (hit != null && hit.transform == rightHalf)
+            {
+                isDragging = true;
+            }
+        }
+        if (Input.GetMouseButtonUp(0))
+        {
+            isDragging = false;
+        }
+        if (!isDragging)
+            return;
+        Vector3 mouseWorld =
+            Camera.main.ScreenToWorldPoint(
+                Input.mousePosition
+            );
+        mouseWorld.z = 0;
+
+        Vector3 mouseLocal =
+            rightHalf.parent.InverseTransformPoint(mouseWorld);
+
+        float dragAmount =
+            mouseLocal.x - rightBaseLocalPos.x;
+        dragAmount = Mathf.Max(
+            dragAmount,
+            0
+        );
+
+        rightHalf.localPosition =
+            new Vector3(
+                rightBaseLocalPos.x + dragAmount,
+                rightBaseLocalPos.y,
+                rightBaseLocalPos.z
+            );
+        rightHalf.localRotation = rightBaseRot;
+
+        dragDistance = dragAmount;
+
+        float dragT = Mathf.InverseLerp(
+            0,
+            openThreshold,
+            dragDistance
+        );
+        leftHalf.localPosition = Vector3.Lerp(
+            leftDragStartLocalPos,
+            leftDragStartLocalPos + Vector3.left * dragLeftShiftAmount,
+            dragT
+        );
+        UpdatePaper();
+        CheckOpen();
+    }
+
+    void UpdatePaper()
+    {
+        float t =
+            Mathf.InverseLerp(
+                0,
+                openThreshold,
+                dragDistance
+            );
+        Vector3 scale =
+            fortunePaperTransform.localScale;
+        scale.x =
+            Mathf.Lerp(
+                closedPaperScaleX,
+                paperOpenScaleX,
+                t
+            );
+        fortunePaperTransform.localScale = scale;
+    }
+    void CheckOpen()
+    {
+        if (dragDistance < openThreshold)
+            return;
+        isOpened = true;
+        isDragging = false;
+
+        Vector3 scale =
+            fortunePaperTransform.localScale;
+        scale.x = paperOpenScaleX;
+        fortunePaperTransform.localScale = scale;
+
+        leftTargetPos =
+            leftHalf.position +
+            Vector3.left * leftShiftAmount;
+        paperTargetPos =
+            fortunePaperTransform.position +
+            Vector3.left * leftShiftAmount;
+        isShifting = true;
+
+        Vector3 currentRightPos =
+            rightHalf.position;
+        rightHalf.SetParent(null, true);
+
+        rightHalf.position =
+            currentRightPos;
+
+        dropTarget =
+            currentRightPos +
+            new Vector3(
+                throwRightDistance,
+                -dropDistance,
+                0
+            );
+
+        isDropping = true;
+        Debug.Log("Fortune Revealed!");
     }
 }
