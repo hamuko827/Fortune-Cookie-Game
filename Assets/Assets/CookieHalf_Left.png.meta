@@ -139,30 +139,23 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Triangle_0
+      name: CookieHalf_Left_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
         width: 256
         height: 223
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
-      outline:
-      - - {x: 66, y: -0.5}
-        - {x: 0, y: 111.5}
-        - {x: -41, y: 41.5}
-        - {x: -95, y: -50.5}
-        - {x: -120, y: -97.5}
-        - {x: -128, y: -111.5}
-        - {x: 128, y: -111.5}
+      outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 10ff2bc0c5e0baa48960eb3ed33230fb
-      internalID: 1732468092
+      spriteID: f8e40d53d33624f4fb3975b5b9ea87b7
+      internalID: -1018051938
       vertices: []
       indices: 
       edges: []
@@ -187,7 +180,7 @@ TextureImporter:
       - key: SpriteEditor.SliceSettings
         value: '{"sliceOnImport":false,"gridCellCount":{"x":1.0,"y":1.0},"gridSpriteSize":{"x":64.0,"y":64.0},"gridSpriteOffset":{"x":0.0,"y":0.0},"gridSpritePadding":{"x":0.0,"y":0.0},"pivot":{"x":0.5,"y":0.5},"pivotPixels":{"x":0.0,"y":0.0},"autoSlicingMethod":0,"spriteAlignment":0,"pivotUnitMode":0,"slicingType":0,"keepEmptyRects":false,"isAlternate":false}'
     nameFileIdTable:
-      Triangle_0: 1732468092
+      CookieHalf_Left_0: -1018051938
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
