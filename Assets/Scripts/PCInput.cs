@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using TMPro;
 
 public class CookieDrag : MonoBehaviour
@@ -37,6 +38,11 @@ public class CookieDrag : MonoBehaviour
     [Header("Paper")]
     public float closedPaperScaleX = 0.6f;
     public float paperOpenScaleX = 2f;
+    public Transform fortunePaperScaleTarget; // the actual paper sprite, not the mask
+
+    [Header("Paper Mask")]
+    public float closedPaperMaskScaleX = 0.6f;
+    public float paperMaskOpenScaleX = 2f;
 
     //when the right cookie breaks off
     [Header("Break")]
@@ -57,11 +63,16 @@ public class CookieDrag : MonoBehaviour
     public float dropTiltAngle = -25f;
     public float dropTiltSpeed = 5f;
 
-    //reveal overlay for the try again part
-    [Header("Overlay")]
-    public CanvasGroup revealOverlay;
+    //reveal canvas for the try again part
+    [Header("Reveal Canvas")]
+    public CanvasGroup revealOverlay; // CanvasGroup on the reveal canvas, used to fade it in
+    public TextMeshProUGUI revealFortuneText; // big fortune text shown in the middle of the reveal canvas
     public float delayBeforeOverlay = 2f;
     public float fadeSpeed = 2f;
+
+    //auto open, triggered by a button instead of dragging
+    [Header("Auto Open")]
+    public float autoOpenSpeed = 2f; // units per second
 
     [HideInInspector]
     public bool isActive = false;
@@ -73,6 +84,7 @@ public class CookieDrag : MonoBehaviour
     private bool isWaiting;
     private bool isFading;
     private bool isShifting;
+    private bool isAutoOpening;
 
     //wait timer for the reveal overlay
     private float waitTimer;
@@ -100,6 +112,8 @@ public class CookieDrag : MonoBehaviour
         paperTargetPos = fortunePaperTransform.position;
 
         revealOverlay.alpha = 0f;
+        revealOverlay.interactable = false;
+        revealOverlay.blocksRaycasts = false;
 
         if (fortuneTextObject != null)
         {
@@ -136,6 +150,12 @@ public class CookieDrag : MonoBehaviour
         }
 
         if (isOpened) return;
+
+        if (isAutoOpening)
+        {
+            HandleAutoOpen();
+            return;
+        }
 
         HandleDrag();
     }
@@ -174,6 +194,11 @@ public class CookieDrag : MonoBehaviour
         {
             isWaiting = false;
             isFading = true;
+
+            if (revealFortuneText != null && fortuneText != null)
+            {
+                revealFortuneText.text = fortuneText.text;
+            }
         }
     }
 
@@ -190,12 +215,29 @@ public class CookieDrag : MonoBehaviour
             fortuneText.maxVisibleCharacters = fortuneText.text.Length;
         }
 
-        SetMasks(closedTextMaskWidth, closedPaperScaleX);
+        SetMasks(closedTextMaskWidth, closedPaperScaleX, closedPaperMaskScaleX);
 
         if (fortuneTextObject != null)
         {
             fortuneTextObject.SetActive(true);
         }
+    }
+
+    //call this from a UI Button's OnClick() to auto-open the cookie
+    //without needing the player to drag
+    public void AutoOpen()
+    {
+        if (isOpened || isAutoOpening) return;
+        isDragging = false; // cancel any manual drag in progress
+        isAutoOpening = true;
+    }
+
+    //call this from the "Try Again" button's OnClick() on the reveal canvas
+    //reloads the current scene, resetting everything
+    public void TryAgain()
+    {
+        Scene currentScene = SceneManager.GetActiveScene();
+        SceneManager.LoadScene(currentScene.name);
     }
 
     void HandleDrag()
@@ -236,18 +278,48 @@ public class CookieDrag : MonoBehaviour
         CheckOpen();
     }
 
+    //mirrors HandleDrag's math, but driven by time instead of mouse position
+    //so the auto-open animates exactly like a real drag would
+    void HandleAutoOpen()
+    {
+        dragDistance += autoOpenSpeed * Time.deltaTime;
+        dragDistance = Mathf.Min(dragDistance, openThreshold);
+
+        rightHalf.localPosition = new Vector3(rightBaseLocalPos.x + dragDistance, rightBaseLocalPos.y, rightBaseLocalPos.z);
+        rightHalf.localRotation = rightBaseRot;
+
+        float dragT = Mathf.InverseLerp(0, openThreshold, dragDistance);
+        leftHalf.localPosition = Vector3.Lerp(leftDragStartLocalPos, leftDragStartLocalPos + Vector3.left * dragLeftShiftAmount, dragT);
+
+        UpdatePaper(dragT);
+
+        if (dragDistance >= openThreshold)
+        {
+            isAutoOpening = false;
+            CheckOpen();
+        }
+    }
+
     void UpdatePaper(float t)
     {
         float textWidth = Mathf.Lerp(closedTextMaskWidth, openTextMaskWidth, t);
         float paperScale = Mathf.Lerp(closedPaperScaleX, paperOpenScaleX, t);
-        SetMasks(textWidth, paperScale);
+        float paperMaskScale = Mathf.Lerp(closedPaperMaskScaleX, paperMaskOpenScaleX, t);
+        SetMasks(textWidth, paperScale, paperMaskScale);
     }
 
-    void SetMasks(float textWidth, float paperScaleX)
+    void SetMasks(float textWidth, float paperScaleX, float paperMaskScaleX)
     {
-        Vector3 scale = paperMaskTransform.localScale;
-        scale.x = paperScaleX;
-        paperMaskTransform.localScale = scale;
+        Vector3 maskScale = paperMaskTransform.localScale;
+        maskScale.x = paperMaskScaleX;
+        paperMaskTransform.localScale = maskScale;
+
+        if (fortunePaperScaleTarget != null)
+        {
+            Vector3 paperScale = fortunePaperScaleTarget.localScale;
+            paperScale.x = paperScaleX;
+            fortunePaperScaleTarget.localScale = paperScale;
+        }
 
         if (textMaskRect != null)
         {
@@ -266,7 +338,7 @@ public class CookieDrag : MonoBehaviour
         isOpened = true;
         isDragging = false;
 
-        SetMasks(openTextMaskWidth, paperOpenScaleX);
+        SetMasks(openTextMaskWidth, paperOpenScaleX, paperMaskOpenScaleX);
 
         leftTargetPos = leftHalf.position + Vector3.left * leftShiftAmount;
         paperTargetPos = fortunePaperTransform.position + Vector3.left * leftShiftAmount;
@@ -278,7 +350,5 @@ public class CookieDrag : MonoBehaviour
 
         dropTarget = currentRightPos + new Vector3(throwRightDistance, -dropDistance, 0);
         isDropping = true;
-
-        Debug.Log("Fortune Revealed!");
     }
 }
