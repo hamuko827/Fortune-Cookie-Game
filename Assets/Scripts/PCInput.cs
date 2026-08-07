@@ -54,6 +54,9 @@ public class CookieDrag : MonoBehaviour
     public float dropDistance = 3f;
     public float dropSpeed = 5f;
 
+    //particle system
+    public ParticleSystem crumbParticles;
+
     //since i wanted the cookie to center itself
     //cuz it looks awkward if left stationary in the middle
     [Header("Center Adjustment")]
@@ -79,8 +82,10 @@ public class CookieDrag : MonoBehaviour
     [Header("Auto Open")]
     public float autoOpenSpeed = 2f; // units per second
 
+    //all sfx related references
     [Header("SFX")]
     public AudioSource cookieBreakSFX;
+
 
     //everything below this are private variables
     [HideInInspector]
@@ -178,6 +183,13 @@ public class CookieDrag : MonoBehaviour
         return Vector3.Distance(t.position, target) < 0.01f;
     }
 
+    public void SpawnCrumbs(Vector2 position)
+    {
+        if (crumbParticles == null) return;
+        crumbParticles.transform.position = position;
+        crumbParticles.Play();
+    }
+
     //this is for the slight shifting to the left that i added
     void HandleShifting()
     {
@@ -261,9 +273,17 @@ public class CookieDrag : MonoBehaviour
         SceneManager.LoadScene(currentScene.name);
     }
 
+    public void ForceOpen()
+    {
+        if (isOpened) return;
+
+        dragDistance = openThreshold;
+        CheckOpen();
+    }
     //everything dragging related
     void HandleDrag()
     {
+
         //checks the mouse and translates the mouse position to an actual world point
         if (Input.GetMouseButtonDown(0))
         {
@@ -272,6 +292,7 @@ public class CookieDrag : MonoBehaviour
 
             if (hit != null && hit.transform == rightHalf)
             {
+                SpawnCrumbs(transform.position + Vector3.down * 0.2f);
                 isDragging = true;
                 cookieBreakSFX.Play();
             }
