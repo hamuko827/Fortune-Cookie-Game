@@ -4,13 +4,16 @@ using UnityEngine;
 //has the method to get a random fortune from the good, mediocre, or bad categories
 public class FortuneDatabase : MonoBehaviour
 {
+    //makes arrays that stores all the fortunes
     public string[] goodFortunes;
     public string[] mediocreFortunes;
     public string[] badFortunes;
 
+    //main script that generates a random fortune based on a 0-2 range
     public string GetRandomFortune()
     {
-        int category = Random.Range(0, 3); // 0 = good, 1 = mediocre, 2 = bad
+        //0 = good, 1 = mediocre, 2 = bad
+        int category = Random.Range(0, 3); 
 
         if (category == 0)
             return goodFortunes[Random.Range(0, goodFortunes.Length)];
