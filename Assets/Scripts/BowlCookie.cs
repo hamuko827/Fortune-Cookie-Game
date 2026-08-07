@@ -6,6 +6,8 @@ public class BowlCookie : MonoBehaviour
     public Vector3 centerScale = new Vector3(1.5f, 1.5f, 1.5f);
     public float moveSpeed = 5f;
 
+    public LayerMask clickableCookie;
+
     public CookieDrag cookieDrag;
 
     private bool isSelected = false;
@@ -13,19 +15,29 @@ public class BowlCookie : MonoBehaviour
 
     public static bool cookieAlreadyChosen = false;
 
+    private Camera cam;
 
-    void OnMouseDown()
+    private void Awake()
     {
-        if (cookieAlreadyChosen)
-            return;
-
-        cookieAlreadyChosen = true;
-        isSelected = true;
+        cam = Camera.main;
     }
-
-
     void Update()
     {
+        if (Input.GetMouseButtonDown(0))
+        {
+            if (cookieAlreadyChosen)
+                return;
+
+            Vector2 mousePos = cam.ScreenToWorldPoint(Input.mousePosition);
+            Collider2D hit = Physics2D.OverlapPoint(mousePos, clickableCookie);
+
+            if (hit != null)
+            {
+                cookieAlreadyChosen = true;
+                isSelected = true;
+            }
+        }
+
         if (isSelected && !hasArrived)
         {
             transform.position = Vector3.Lerp(
@@ -41,17 +53,14 @@ public class BowlCookie : MonoBehaviour
                 moveSpeed * Time.deltaTime
             );
 
-
             Quaternion targetRotation =
                 Quaternion.Euler(0, 0, 0);
-
 
             transform.rotation = Quaternion.Lerp(
                 transform.rotation,
                 targetRotation,
                 moveSpeed * Time.deltaTime
             );
-
 
             if (Vector3.Distance(transform.position, centerPosition) < 0.01f)
             {
@@ -61,16 +70,16 @@ public class BowlCookie : MonoBehaviour
         }
     }
 
-
     void OnArriveAtCenter()
     {
         if (cookieDrag != null)
         {
-            // Activate fortune first
+            //activate the fortune method in cookiedrag
             cookieDrag.ActivateFortune();
 
-            // Allow dragging/opening
+            //set cookiedrag is active flag
             cookieDrag.isActive = true;
         }
     }
 }
+    

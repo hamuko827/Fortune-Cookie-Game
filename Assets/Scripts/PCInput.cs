@@ -40,11 +40,15 @@ public class CookieDrag : MonoBehaviour
     public float paperOpenScaleX = 2f;
     public Transform fortunePaperScaleTarget; // the actual paper sprite, not the mask
 
+    //mask where the paper is visible inside of
+    //same value as paper so if the player moves the right cookie
+    //the mask moves alongside it
+    //and the paper becomes visible
     [Header("Paper Mask")]
     public float closedPaperMaskScaleX = 0.6f;
     public float paperMaskOpenScaleX = 2f;
 
-    //when the right cookie breaks off
+    //effects for when the right cookie breaks off
     [Header("Break")]
     public float throwRightDistance = 2f;
     public float dropDistance = 3f;
@@ -65,8 +69,9 @@ public class CookieDrag : MonoBehaviour
 
     //reveal canvas for the try again part
     [Header("Reveal Canvas")]
-    public CanvasGroup revealOverlay; // CanvasGroup on the reveal canvas, used to fade it in
-    public TextMeshProUGUI revealFortuneText; // big fortune text shown in the middle of the reveal canvas
+    //canvas group for the fade in effect using alpha
+    public CanvasGroup revealOverlay;
+    public TextMeshProUGUI revealFortuneText;
     public float delayBeforeOverlay = 2f;
     public float fadeSpeed = 2f;
 
@@ -74,6 +79,10 @@ public class CookieDrag : MonoBehaviour
     [Header("Auto Open")]
     public float autoOpenSpeed = 2f; // units per second
 
+    [Header("SFX")]
+    public AudioSource cookieBreakSFX;
+
+    //everything below this are private variables
     [HideInInspector]
     public bool isActive = false;
 
@@ -100,6 +109,7 @@ public class CookieDrag : MonoBehaviour
     private Vector3 paperTargetPos;
     private Vector3 dropTarget;
 
+    //sets all variables
     void Start()
     {
         cam = Camera.main;
@@ -114,6 +124,8 @@ public class CookieDrag : MonoBehaviour
         revealOverlay.alpha = 0f;
         revealOverlay.interactable = false;
         revealOverlay.blocksRaycasts = false;
+
+        cookieBreakSFX = GetComponent<AudioSource>();
 
         if (fortuneTextObject != null)
         {
@@ -166,6 +178,7 @@ public class CookieDrag : MonoBehaviour
         return Vector3.Distance(t.position, target) < 0.01f;
     }
 
+    //this is for the slight shifting to the left that i added
     void HandleShifting()
     {
         bool leftDone = MoveToward(leftHalf, leftTargetPos, shiftSpeed);
@@ -173,9 +186,12 @@ public class CookieDrag : MonoBehaviour
 
         if (leftDone) isShifting = false;
     }
-
+    
+    //manages the dropping of the right cookie
     void HandleDropping()
     {
+        //if bool rightDone (means right cookie half has fallen)
+        //then activate the dropping part
         bool rightDone = MoveToward(rightHalf, dropTarget, dropSpeed);
         rightHalf.rotation = Quaternion.Lerp(rightHalf.rotation, rightBaseRot * Quaternion.Euler(0, 0, dropTiltAngle), dropTiltSpeed * Time.deltaTime);
 
@@ -186,7 +202,10 @@ public class CookieDrag : MonoBehaviour
             waitTimer = 0f;
         }
     }
-
+    
+    //this is for the delay before showing the reveal screen
+    //checks first if there is already a revealed fortune text 
+    //and if fortune text is not null
     void HandleWaiting()
     {
         waitTimer += Time.deltaTime;
@@ -202,11 +221,13 @@ public class CookieDrag : MonoBehaviour
         }
     }
 
+    //in charge of the fading of the reveal overlay depending on the fadespeed i put in inspector
     void HandleFading()
     {
         revealOverlay.alpha = Mathf.MoveTowards(revealOverlay.alpha, 1f, fadeSpeed * Time.deltaTime);
     }
 
+    //calls the fortune database to actually generate a fortune for the player
     public void ActivateFortune()
     {
         if (fortuneText != null && fortuneDatabase != null)
@@ -228,7 +249,7 @@ public class CookieDrag : MonoBehaviour
     public void AutoOpen()
     {
         if (isOpened || isAutoOpening) return;
-        isDragging = false; // cancel any manual drag in progress
+        isDragging = false; 
         isAutoOpening = true;
     }
 
@@ -240,8 +261,10 @@ public class CookieDrag : MonoBehaviour
         SceneManager.LoadScene(currentScene.name);
     }
 
+    //everything dragging related
     void HandleDrag()
     {
+        //checks the mouse and translates the mouse position to an actual world point
         if (Input.GetMouseButtonDown(0))
         {
             Vector2 mousePos = cam.ScreenToWorldPoint(Input.mousePosition);
@@ -250,9 +273,11 @@ public class CookieDrag : MonoBehaviour
             if (hit != null && hit.transform == rightHalf)
             {
                 isDragging = true;
+                cookieBreakSFX.Play();
             }
         }
 
+        //sets isdragging as false if the player lifts their click from the left mouse button
         if (Input.GetMouseButtonUp(0))
         {
             isDragging = false;
@@ -300,6 +325,7 @@ public class CookieDrag : MonoBehaviour
         }
     }
 
+    //updates the paper scale for the masks
     void UpdatePaper(float t)
     {
         float textWidth = Mathf.Lerp(closedTextMaskWidth, openTextMaskWidth, t);
