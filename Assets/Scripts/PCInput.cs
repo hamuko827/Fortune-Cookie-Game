@@ -114,7 +114,7 @@ public class CookieDrag : MonoBehaviour
     private Vector3 paperTargetPos;
     private Vector3 dropTarget;
 
-    //sets all variables
+    //sets all variables at the start
     void Start()
     {
         cam = Camera.main;
@@ -138,6 +138,8 @@ public class CookieDrag : MonoBehaviour
         }
     }
 
+    //everything that happens every frame so it checks whats currently happening to each cookie
+    //and handling the method corresponding to that state
     void Update()
     {
         if (!isActive) return;
@@ -174,15 +176,19 @@ public class CookieDrag : MonoBehaviour
             return;
         }
 
+        //always handling drag unless the cookie is opened or auto opening, so that the player can drag the right cookie half
         HandleDrag();
     }
 
+    //moves the transform t towards the target position at a given speed
     bool MoveToward(Transform t, Vector3 target, float speed)
     {
         t.position = Vector3.MoveTowards(t.position, target, speed * Time.deltaTime);
         return Vector3.Distance(t.position, target) < 0.01f;
     }
 
+    //spawns the crumbs particle system at the given position
+    //to show off the effect of crumbs
     public void SpawnCrumbs(Vector2 position)
     {
         if (crumbParticles == null) return;
@@ -191,6 +197,7 @@ public class CookieDrag : MonoBehaviour
     }
 
     //this is for the slight shifting to the left that i added
+    //to ensure that the cookie is always centered when the player opens it, since the right cookie half is moving to the right
     void HandleShifting()
     {
         bool leftDone = MoveToward(leftHalf, leftTargetPos, shiftSpeed);
@@ -242,12 +249,15 @@ public class CookieDrag : MonoBehaviour
     //calls the fortune database to actually generate a fortune for the player
     public void ActivateFortune()
     {
+        //if the fortune text and database are not null
+        //then proceed with generating a fortune and setting the text to the fortune text
         if (fortuneText != null && fortuneDatabase != null)
         {
             fortuneText.text = fortuneDatabase.GetRandomFortune();
             fortuneText.maxVisibleCharacters = fortuneText.text.Length;
         }
 
+        //for the mask, sets the mask to the closed state so that the text is hidden until the player opens the cookie
         SetMasks(closedTextMaskWidth, closedPaperScaleX, closedPaperMaskScaleX);
 
         if (fortuneTextObject != null)
@@ -280,7 +290,8 @@ public class CookieDrag : MonoBehaviour
         dragDistance = openThreshold;
         CheckOpen();
     }
-    //everything dragging related
+
+    //everything related to dragging the right cookie half, checking if the player is clicking on it and moving it to the right
     void HandleDrag()
     {
 
@@ -290,6 +301,7 @@ public class CookieDrag : MonoBehaviour
             Vector2 mousePos = cam.ScreenToWorldPoint(Input.mousePosition);
             Collider2D hit = Physics2D.OverlapPoint(mousePos, draggableLayer);
 
+            //if the player clicks on the right cookie half, then it will spawn crumbs and set isdragging as true
             if (hit != null && hit.transform == rightHalf)
             {
                 SpawnCrumbs(transform.position + Vector3.down * 0.2f);
@@ -299,6 +311,7 @@ public class CookieDrag : MonoBehaviour
         }
 
         //sets isdragging as false if the player lifts their click from the left mouse button
+        //since it is get mouse button up
         if (Input.GetMouseButtonUp(0))
         {
             isDragging = false;
@@ -326,6 +339,7 @@ public class CookieDrag : MonoBehaviour
 
     //mirrors HandleDrag's math, but driven by time instead of mouse position
     //so the auto-open animates exactly like a real drag would
+    //i have not set a time for this yet
     void HandleAutoOpen()
     {
         dragDistance += autoOpenSpeed * Time.deltaTime;
@@ -380,8 +394,12 @@ public class CookieDrag : MonoBehaviour
     //checks the open threshold
     void CheckOpen()
     {
+        //if the drag distance is less than the open threshold, then return and do nothing
+        //cuz that means the player has not dragged the right cookie half far enough to open it
         if (dragDistance < openThreshold) return;
 
+        //if it is not less than the open threshold, then it will set isopened as true and isdragging as false
+        //cuz that means the gap between the two cookie halves is big enough to trigger the opening of the cookie
         isOpened = true;
         isDragging = false;
 
