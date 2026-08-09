@@ -12,7 +12,7 @@ public class BowlCookie : MonoBehaviour
     //needs to be fixed rn
     public LayerMask clickableCookie;
 
-    //calls the cookiedrag script to activate the fortune system when the cookie has arrived at the center of the screen
+    //calls the cookiedrag script to activate the fortune system when the cookie has arrived at the center
     public CookieDrag cookieDrag;
 
     //bool to check if the cookie has been selected and if it has arrived at the center of the screen
@@ -24,11 +24,23 @@ public class BowlCookie : MonoBehaviour
 
     private Camera cam;
 
+    //stores the original position, scale, and rotation
+    //so that the cookie can return to the bowl when try again is pressed
+    private Vector3 originalPosition;
+    private Vector3 originalScale;
+    private Quaternion originalRotation;
+
     //initializes camera for the layer
     private void Awake()
     {
         cam = Camera.main;
+
+        //stores the original transform values
+        originalPosition = transform.position;
+        originalScale = transform.localScale;
+        originalRotation = transform.rotation;
     }
+
     void Update()
     {
         //if the player clicks down on their left mouse button
@@ -74,6 +86,7 @@ public class BowlCookie : MonoBehaviour
             //in the case that it had a different rotation due to the random placement in the bowl
             Quaternion targetRotation =
                 Quaternion.Euler(0, 0, 0);
+
             transform.rotation = Quaternion.Lerp(
                 transform.rotation,
                 targetRotation,
@@ -102,5 +115,17 @@ public class BowlCookie : MonoBehaviour
             cookieDrag.isActive = true;
         }
     }
+
+    //resets this cookie back to its original bowl position
+    public void ResetCookie()
+    {
+        //reset the cookie states
+        isSelected = false;
+        hasArrived = false;
+
+        //reset the cookie transform
+        transform.position = originalPosition;
+        transform.localScale = originalScale;
+        transform.rotation = originalRotation;
+    }
 }
-    

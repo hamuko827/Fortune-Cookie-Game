@@ -1,10 +1,9 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using TMPro;
 
 public class CookieDrag : MonoBehaviour
 {
-    [Header("General References")]
+[Header("General References")]
 
     //left and right cookie
     public Transform leftHalf;
@@ -114,6 +113,23 @@ public class CookieDrag : MonoBehaviour
     private Vector3 paperTargetPos;
     private Vector3 dropTarget;
 
+    //stores the original transform values so the cookie can be completely reset
+    private Transform originalRightParent;
+    private Vector3 originalRightLocalPosition;
+    private Quaternion originalRightLocalRotation;
+    private Vector3 originalRightLocalScale;
+
+    private Vector3 originalLeftLocalPosition;
+    private Quaternion originalLeftLocalRotation;
+    private Vector3 originalLeftLocalScale;
+
+    private Vector3 originalPaperPosition;
+    private Quaternion originalPaperRotation;
+    private Vector3 originalPaperScale;
+
+    private Vector3 originalPaperMaskScale;
+    private Vector2 originalTextMaskSize;
+
     //sets all variables at the start
     void Start()
     {
@@ -135,6 +151,31 @@ public class CookieDrag : MonoBehaviour
         if (fortuneTextObject != null)
         {
             fortuneTextObject.SetActive(false);
+        }
+
+        //stores the original right cookie transform
+        originalRightParent = rightHalf.parent;
+        originalRightLocalPosition = rightHalf.localPosition;
+        originalRightLocalRotation = rightHalf.localRotation;
+        originalRightLocalScale = rightHalf.localScale;
+
+        //stores the original left cookie transform
+        originalLeftLocalPosition = leftHalf.localPosition;
+        originalLeftLocalRotation = leftHalf.localRotation;
+        originalLeftLocalScale = leftHalf.localScale;
+
+        //stores the original paper transform
+        originalPaperPosition = fortunePaperTransform.position;
+        originalPaperRotation = fortunePaperTransform.rotation;
+        originalPaperScale = fortunePaperTransform.localScale;
+
+        //stores the original paper mask scale
+        originalPaperMaskScale = paperMaskTransform.localScale;
+
+        //stores the original text mask size
+        if (textMaskRect != null)
+        {
+            originalTextMaskSize = textMaskRect.sizeDelta;
         }
     }
 
@@ -205,7 +246,7 @@ public class CookieDrag : MonoBehaviour
 
         if (leftDone) isShifting = false;
     }
-    
+
     //manages the dropping of the right cookie
     void HandleDropping()
     {
@@ -221,7 +262,7 @@ public class CookieDrag : MonoBehaviour
             waitTimer = 0f;
         }
     }
-    
+
     //this is for the delay before showing the reveal screen
     //checks first if there is already a revealed fortune text 
     //and if fortune text is not null
@@ -236,6 +277,13 @@ public class CookieDrag : MonoBehaviour
             if (revealFortuneText != null && fortuneText != null)
             {
                 revealFortuneText.text = fortuneText.text;
+            }
+
+            //allows the try again button on the reveal canvas to receive clicks
+            if (revealOverlay != null)
+            {
+                revealOverlay.interactable = true;
+                revealOverlay.blocksRaycasts = true;
             }
         }
     }
@@ -276,11 +324,11 @@ public class CookieDrag : MonoBehaviour
     }
 
     //call this from the "Try Again" button's OnClick() on the reveal canvas
-    //reloads the current scene, resetting everything
+    //resets everything without reloading the scene
     public void TryAgain()
     {
-        Scene currentScene = SceneManager.GetActiveScene();
-        SceneManager.LoadScene(currentScene.name);
+        BowlCookie.cookieAlreadyChosen = false;
+        ResetCookie();
     }
 
     public void ForceOpen()
@@ -306,7 +354,11 @@ public class CookieDrag : MonoBehaviour
             {
                 SpawnCrumbs(transform.position + Vector3.down * 0.2f);
                 isDragging = true;
-                cookieBreakSFX.Play();
+
+                if (cookieBreakSFX != null)
+                {
+                    cookieBreakSFX.Play();
+                }
             }
         }
 
@@ -415,5 +467,106 @@ public class CookieDrag : MonoBehaviour
 
         dropTarget = currentRightPos + new Vector3(throwRightDistance, -dropDistance, 0);
         isDropping = true;
+    }
+
+    //resets the opened cookie back to its original state
+    public void ResetCookie()
+    {
+        //stops all cookie states
+        isActive = false;
+        isDragging = false;
+        isOpened = false;
+        isDropping = false;
+        isWaiting = false;
+        isFading = false;
+        isShifting = false;
+        isAutoOpening = false;
+
+        //resets the timers and drag distance
+        waitTimer = 0f;
+        dragDistance = 0f;
+
+        //puts the right cookie back under its original parent
+        if (rightHalf != null)
+        {
+            rightHalf.SetParent(originalRightParent, false);
+
+            //resets the right cookie transform
+            rightHalf.localPosition = originalRightLocalPosition;
+            rightHalf.localRotation = originalRightLocalRotation;
+            rightHalf.localScale = originalRightLocalScale;
+        }
+
+        //resets the left cookie transform
+        if (leftHalf != null)
+        {
+            leftHalf.localPosition = originalLeftLocalPosition;
+            leftHalf.localRotation = originalLeftLocalRotation;
+            leftHalf.localScale = originalLeftLocalScale;
+        }
+
+        //resets the fortune paper transform
+        if (fortunePaperTransform != null)
+        {
+            fortunePaperTransform.position = originalPaperPosition;
+            fortunePaperTransform.rotation = originalPaperRotation;
+            fortunePaperTransform.localScale = originalPaperScale;
+        }
+
+        //resets the paper mask
+        if (paperMaskTransform != null)
+        {
+            paperMaskTransform.localScale = originalPaperMaskScale;
+        }
+
+        //resets the text mask
+        if (textMaskRect != null)
+        {
+            textMaskRect.sizeDelta = originalTextMaskSize;
+        }
+
+        //resets the paper and text masks to their closed state
+        SetMasks(
+            closedTextMaskWidth,
+            closedPaperScaleX,
+            closedPaperMaskScaleX
+        );
+
+        //hides the fortune text
+        if (fortuneTextObject != null)
+        {
+            fortuneTextObject.SetActive(false);
+        }
+
+        //clears the fortune text
+        if (fortuneText != null)
+        {
+            fortuneText.text = "";
+        }
+
+        //clears the revealed fortune text
+        if (revealFortuneText != null)
+        {
+            revealFortuneText.text = "";
+        }
+
+        //resets the reveal overlay
+        if (revealOverlay != null)
+        {
+            revealOverlay.alpha = 0f;
+            revealOverlay.interactable = false;
+            revealOverlay.blocksRaycasts = false;
+        }
+
+        //resets the target positions
+        leftTargetPos = leftHalf.position;
+        paperTargetPos = fortunePaperTransform.position;
+
+        //resets the base position and rotation of the right cookie
+        rightBaseLocalPos = rightHalf.localPosition;
+        rightBaseRot = rightHalf.localRotation;
+
+        //resets the starting position of the left cookie
+        leftDragStartLocalPos = leftHalf.localPosition;
     }
 }
