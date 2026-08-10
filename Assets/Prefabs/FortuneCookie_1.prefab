@@ -31,7 +31,6 @@ Transform:
   m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 5369811212182146507}
-  - {fileID: 8932052560823662852}
   m_Father: {fileID: 9018170208918501276}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &3185267809935378029
@@ -269,12 +268,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2039766158122768980}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.817, y: -0.205, z: 0}
-  m_LocalScale: {x: 1, y: 6.2710156, z: 2.3815196}
+  m_LocalRotation: {x: -0, y: -0, z: 0.19295846, w: 0.98120695}
+  m_LocalPosition: {x: 0.4493445, y: 0.1568031, z: 0}
+  m_LocalScale: {x: 0.39199418, y: 1.9585217, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 4660957470012350131}
+  m_Father: {fileID: 6528040440372404083}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!331 &720685115751174053
 SpriteMask:
@@ -638,6 +637,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 3867759588318750875}
+  - {fileID: 8932052560823662852}
   m_Father: {fileID: 9018170208918501276}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &8385264390561214418
@@ -796,6 +796,7 @@ MonoBehaviour:
   throwRightDistance: -0.2
   dropDistance: 1.5
   dropSpeed: 2
+  crumbParticles: {fileID: 0}
   leftShiftAmount: 1
   dragLeftShiftAmount: 0.15
   shiftSpeed: 5

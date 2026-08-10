@@ -1,31 +1,18 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 //script that manages resetting the game when the player presses the try again button
 public class TryAgainManager : MonoBehaviour
 {
-    //resets all of the cookies and the fortune system
+    //reloads the current scene, which naturally resets every cookie,
+    //fortune paper, and text mask back to however they're set up in the scene
     public void TryAgain()
     {
         //resets the cookie selection so the player can choose another cookie
+        //(this is a static field, so it survives scene reloads on its own -
+        //has to be cleared explicitly here)
         BowlCookie.cookieAlreadyChosen = false;
 
-        //finds all of the cookies in the scene
-        BowlCookie[] allCookies = FindObjectsOfType<BowlCookie>();
-
-        //resets every cookie in the bowl
-        foreach (BowlCookie cookie in allCookies)
-        {
-            cookie.ResetCookie();
-        }
-
-        //finds all of the cookie drag systems in the scene
-        CookieDrag[] allCookieDrags = FindObjectsOfType<CookieDrag>();
-
-        //resets every opened cookie
-        foreach (CookieDrag cookieDrag in allCookieDrags)
-        {
-            cookieDrag.ResetCookie();
-        }
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 }
-
