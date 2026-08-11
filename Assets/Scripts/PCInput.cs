@@ -48,6 +48,14 @@ public class CookieDrag : MonoBehaviour
     [Header("Left Drag Paper Adjustment")]
     public float leftDragPaperOffsetX = 0f;
 
+    //ADDITIONAL offset applied progressively as the paper opens (scales
+    //from 0 at the start of the drag up to this full value once fully open).
+    //use this if leftDragPaperOffsetX alone isn't enough - the paper's
+    //scale grows as it opens, so how far it clips outward grows too, and a
+    //single fixed offset can't correct for both a mostly-closed paper and
+    //a fully-open one at the same time
+    public float leftDragPaperOpenOffsetX = 0f;
+
     //manual anchored position (Pos X / Pos Y on the RectTransform) for the fortune
     //text mask GameObject, since the correct spot differs depending on which cookie
     //half breaks off
@@ -153,6 +161,10 @@ public class CookieDrag : MonoBehaviour
 
     //used so the paper is only repositioned once when left dragging starts
     private bool paperRepositionedForLeftDrag;
+
+    //the paper's position right after PositionPaperForLeftDrag runs, before
+    //any progressive open-offset is layered on top each frame
+    private Vector3 leftDragBasePaperPosition;
 
 
     void Start()
@@ -488,6 +500,11 @@ public class CookieDrag : MonoBehaviour
 
         paperRepositionedForLeftDrag = true;
 
+        //remember this as the base - the progressive open-offset gets
+        //layered on top of this each frame, not baked into it here
+        leftDragBasePaperPosition =
+            fortunePaperTransform.position;
+
         //The paper should remain centered around this
         //new right-side anchor during the opening shift.
         paperTargetPos =
@@ -697,6 +714,22 @@ public class CookieDrag : MonoBehaviour
     }
 
 
+    //Applies the progressive left-drag offset, scaling from 0 at the start
+    //of the drag up to leftDragPaperOpenOffsetX at full open (t=1). Only
+    //has an effect for the left-drag case - right-drag never touches
+    //fortunePaperTransform's position here.
+    void ApplyLeftDragOpenOffset(float t)
+    {
+        if (dragDirection >= 0f) return;
+        if (fortunePaperTransform == null) return;
+        if (!paperRepositionedForLeftDrag) return;
+
+        fortunePaperTransform.position =
+            leftDragBasePaperPosition +
+            new Vector3(leftDragPaperOpenOffsetX * t, 0f, 0f);
+    }
+
+
     void UpdatePaper(float t)
     {
         float textWidth =
@@ -725,6 +758,8 @@ public class CookieDrag : MonoBehaviour
             paperScale,
             paperMaskScale
         );
+
+        ApplyLeftDragOpenOffset(t);
     }
 
 
