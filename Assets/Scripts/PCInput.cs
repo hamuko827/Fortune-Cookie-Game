@@ -51,14 +51,14 @@ public class CookieDrag : MonoBehaviour
     //ADDITIONAL offset applied progressively as the paper opens (scales
     //from 0 at the start of the drag up to this full value once fully open).
     //use this if leftDragPaperOffsetX alone isn't enough - the paper's
-    //scale grows as it opens, so how far it clips outward grows too, and a
-    //single fixed offset can't correct for both a mostly-closed paper and
+    //scale grows as it opens, so how far it clips outward grows, and
+    //a single fixed offset can't correct for both a mostly-closed paper and
     //a fully-open one at the same time
     public float leftDragPaperOpenOffsetX = 0f;
 
     //manual anchored position (Pos X / Pos Y on the RectTransform) for the fortune
-    //text mask GameObject, since the correct spot differs depending on which cookie
-    //half breaks off
+    //text mask GameObject, since the correct spot differs depending on which
+    //cookie half breaks off
     [Header("Fortune Text Mask Placement")]
     public Vector2 textMaskPosRight = Vector2.zero;
     public Vector2 textMaskPosLeft = Vector2.zero;
@@ -98,6 +98,11 @@ public class CookieDrag : MonoBehaviour
     [Header("SFX")]
     public AudioSource cookieBreakSFX;
 
+    //fortune reveal jingles
+    public AudioSource goodFortuneJingle;
+    public AudioSource mediocreFortuneJingle;
+    public AudioSource badFortuneJingle;
+
 
     //everything below this are private variables
     [HideInInspector]
@@ -110,7 +115,11 @@ public class CookieDrag : MonoBehaviour
     private bool isFading;
     private bool isShifting;
     private bool isAutoOpening;
-    
+
+    //makes sure the fortune jingle only plays once
+    //when the cookie reaches the open threshold
+    private bool fortuneJinglePlayed;
+
 
     private float waitTimer;
     private float dragDistance;
@@ -175,11 +184,17 @@ public class CookieDrag : MonoBehaviour
         anchorTargetPos = leftHalf.position;
         paperTargetPos = fortunePaperTransform.position;
 
-        revealOverlay.alpha = 0f;
-        revealOverlay.interactable = false;
-        revealOverlay.blocksRaycasts = false;
+        if (revealOverlay != null)
+        {
+            revealOverlay.alpha = 0f;
+            revealOverlay.interactable = false;
+            revealOverlay.blocksRaycasts = false;
+        }
 
-        cookieBreakSFX = GetComponent<AudioSource>();
+        if (cookieBreakSFX == null)
+        {
+            cookieBreakSFX = GetComponent<AudioSource>();
+        }
 
         if (fortuneTextObject != null)
         {
@@ -211,7 +226,10 @@ public class CookieDrag : MonoBehaviour
             fortunePaperTransform.position - leftHalf.position;
 
         //stores original paper mask scale
-        originalPaperMaskScale = paperMaskTransform.localScale;
+        if (paperMaskTransform != null)
+        {
+            originalPaperMaskScale = paperMaskTransform.localScale;
+        }
 
         //stores original text mask size and anchored position
         if (textMaskRect != null)
@@ -264,12 +282,7 @@ public class CookieDrag : MonoBehaviour
 
     bool MoveToward(Transform t, Vector3 target, float speed)
     {
-        t.position = Vector3.MoveTowards(
-            t.position,
-            target,
-            speed * Time.deltaTime
-        );
-
+        t.position = Vector3.MoveTowards(t.position,target, speed * Time.deltaTime);
         return Vector3.Distance(t.position, target) < 0.01f;
     }
 
@@ -313,16 +326,7 @@ public class CookieDrag : MonoBehaviour
             dropSpeed
         );
 
-        draggedHalf.rotation = Quaternion.Lerp(
-            draggedHalf.rotation,
-            draggedBaseRot *
-            Quaternion.Euler(
-                0,
-                0,
-                dropTiltAngle * dragDirection
-            ),
-            dropTiltSpeed * Time.deltaTime
-        );
+        draggedHalf.rotation = Quaternion.Lerp(draggedHalf.rotation, draggedBaseRot * Quaternion.Euler(0 , 0, dropTiltAngle * dragDirection),dropTiltSpeed * Time.deltaTime);
 
         if (draggedDone)
         {
@@ -358,6 +362,9 @@ public class CookieDrag : MonoBehaviour
 
     void HandleFading()
     {
+        if (revealOverlay == null)
+            return;
+
         revealOverlay.alpha = Mathf.MoveTowards(
             revealOverlay.alpha,
             1f,
@@ -545,54 +552,77 @@ public class CookieDrag : MonoBehaviour
                 (hit.transform == rightHalf ||
                  hit.transform == leftHalf))
             {
-                draggedHalf = hit.transform;
-
-                anchorHalf =
-                    (draggedHalf == rightHalf)
-                    ? leftHalf
-                    : rightHalf;
-
-                dragDirection =
-                    (draggedHalf == rightHalf)
-                    ? 1f
-                    : -1f;
-
-                draggedBaseLocalPos =
-                    draggedHalf.localPosition;
-
-                draggedBaseRot =
-                    draggedHalf.localRotation;
-
-                anchorStartLocalPos =
-                    anchorHalf.localPosition;
-
-                //If the LEFT cookie is grabbed,
-                //reposition the paper immediately.
+                //IMPORTANT:
                 //
-                //The paper stays in its original hierarchy.
-                if (draggedHalf == leftHalf)
+                //Once the player has started dragging one side,
+                //they cannot switch to the other side during
+                //this cookie opening.
+                //
+                //Re-clicking the SAME side is allowed so the player
+                //can continue dragging from where they left off.
+                if (draggedHalf != null &&
+                    hit.transform != draggedHalf)
                 {
-                    PositionPaperForLeftDrag();
+                    return;
                 }
-                else
+
+
+                //Only set up the drag the FIRST time.
+                //
+                //This prevents re-clicking from resetting the
+                //paper scale, drag distance, or starting position.
+                if (draggedHalf == null)
                 {
-                    //RIGHT cookie is being dragged,
-                    //so the LEFT cookie is the paper anchor.
+                    draggedHalf = hit.transform;
+
+                    anchorHalf =
+                        (draggedHalf == rightHalf)
+                        ? leftHalf
+                        : rightHalf;
+
+                    dragDirection =
+                        (draggedHalf == rightHalf)
+                        ? 1f
+                        : -1f;
+
+                    draggedBaseLocalPos =
+                        draggedHalf.localPosition;
+
+                    draggedBaseRot =
+                        draggedHalf.localRotation;
+
+                    anchorStartLocalPos =
+                        anchorHalf.localPosition;
+
+                    //If the LEFT cookie is grabbed,
+                    //reposition the paper immediately.
                     //
-                    //Keep the paper attached to the LEFT side.
-                    paperTargetPos =
-                        fortunePaperTransform.position;
+                    //The paper stays in its original hierarchy.
+                    if (draggedHalf == leftHalf)
+                    {
+                        PositionPaperForLeftDrag();
+                    }
+                    else
+                    {
+                        //RIGHT cookie is being dragged,
+                        //so the LEFT cookie is the paper anchor.
+                        //
+                        //Keep the paper attached to the LEFT side.
+                        paperTargetPos =
+                            fortunePaperTransform.position;
+                    }
+
+                    //Place the fortune text mask according to whichever
+                    //direction slot is set for this drag direction.
+                    PositionTextMaskForDirection();
+
+                    SpawnCrumbs(
+                        transform.position +
+                        Vector3.down * 0.2f
+                    );
                 }
 
-                //Place the fortune text mask according to whichever
-                //direction slot is set for this drag direction.
-                PositionTextMaskForDirection();
-
-                SpawnCrumbs(
-                    transform.position +
-                    Vector3.down * 0.2f
-                );
-
+                //Start/resume dragging.
                 isDragging = true;
 
                 if (cookieBreakSFX != null)
@@ -602,12 +632,16 @@ public class CookieDrag : MonoBehaviour
             }
         }
 
+
         if (Input.GetMouseButtonUp(0))
         {
             isDragging = false;
         }
 
-        if (!isDragging) return;
+
+        if (!isDragging)
+            return;
+
 
         Vector3 mouseWorld =
             cam.ScreenToWorldPoint(
@@ -616,11 +650,18 @@ public class CookieDrag : MonoBehaviour
 
         mouseWorld.z = 0;
 
+
         Vector3 mouseLocal =
             draggedHalf.parent.InverseTransformPoint(
                 mouseWorld
             );
 
+
+        //Calculate the TOTAL distance from the original
+        //starting position of the cookie.
+        //
+        //This is important because re-clicking the cookie
+        //must NOT make dragDistance start from zero again.
         float dragAmount =
             Mathf.Max(
                 (mouseLocal.x -
@@ -628,6 +669,7 @@ public class CookieDrag : MonoBehaviour
                 dragDirection,
                 0
             );
+
 
         draggedHalf.localPosition =
             new Vector3(
@@ -637,10 +679,14 @@ public class CookieDrag : MonoBehaviour
                 draggedBaseLocalPos.z
             );
 
+
         draggedHalf.localRotation =
             draggedBaseRot;
 
+
+        //dragDistance now represents the TOTAL opening progress.
         dragDistance = dragAmount;
+
 
         float dragT =
             Mathf.InverseLerp(
@@ -649,6 +695,12 @@ public class CookieDrag : MonoBehaviour
                 dragDistance
             );
 
+
+        //Move the anchor based on the TOTAL opening progress.
+        //
+        //Because anchorStartLocalPos is only captured once,
+        //the anchor will not keep shifting farther every time
+        //the player re-clicks.
         anchorHalf.localPosition =
             Vector3.Lerp(
                 anchorStartLocalPos,
@@ -659,7 +711,13 @@ public class CookieDrag : MonoBehaviour
                 dragT
             );
 
+
+        //Update the paper using the TOTAL opening progress.
+        //
+        //This prevents the paper from scaling back down
+        //when the player releases and re-clicks.
         UpdatePaper(dragT);
+
 
         CheckOpen();
     }
@@ -771,15 +829,18 @@ public class CookieDrag : MonoBehaviour
     )
     {
         //Paper mask can flip direction.
-        Vector3 maskScale =
-            paperMaskTransform.localScale;
+        if (paperMaskTransform != null)
+        {
+            Vector3 maskScale =
+                paperMaskTransform.localScale;
 
-        maskScale.x =
-            paperMaskScaleX *
-            dragDirection;
+            maskScale.x =
+                paperMaskScaleX *
+                dragDirection;
 
-        paperMaskTransform.localScale =
-            maskScale;
+            paperMaskTransform.localScale =
+                maskScale;
+        }
 
         //Actual paper can flip direction.
         if (fortunePaperScaleTarget != null)
@@ -814,6 +875,9 @@ public class CookieDrag : MonoBehaviour
         if (dragDistance < openThreshold)
             return;
 
+        if (isOpened)
+            return;
+
         isOpened = true;
         isDragging = false;
 
@@ -822,6 +886,10 @@ public class CookieDrag : MonoBehaviour
             paperOpenScaleX,
             paperMaskOpenScaleX
         );
+
+        //Play the fortune jingle exactly when
+        //the cookie reaches the open threshold.
+        PlayFortuneJingle();
 
         //Anchor cookie re-centers itself.
         anchorTargetPos =
@@ -884,6 +952,46 @@ public class CookieDrag : MonoBehaviour
     }
 
 
+    //plays the correct jingle based on the fortune category
+    //when the cookie reaches the open threshold
+    void PlayFortuneJingle()
+    {
+        if (fortuneJinglePlayed)
+            return;
+
+        fortuneJinglePlayed = true;
+
+        if (fortuneDatabase == null)
+            return;
+
+        switch (fortuneDatabase.currentFortuneCategory)
+        {
+            case FortuneDatabase.FortuneCategory.Good:
+
+                if (goodFortuneJingle != null)
+                    goodFortuneJingle.Play();
+
+                break;
+
+
+            case FortuneDatabase.FortuneCategory.Mediocre:
+
+                if (mediocreFortuneJingle != null)
+                    mediocreFortuneJingle.Play();
+
+                break;
+
+
+            case FortuneDatabase.FortuneCategory.Bad:
+
+                if (badFortuneJingle != null)
+                    badFortuneJingle.Play();
+
+                break;
+        }
+    }
+
+
     public void ResetCookie()
     {
         //stops all cookie states
@@ -902,6 +1010,10 @@ public class CookieDrag : MonoBehaviour
 
         //allows paper repositioning again next round
         paperRepositionedForLeftDrag = false;
+
+        //allows the fortune jingle to play again
+        //when this cookie is selected next time
+        fortuneJinglePlayed = false;
 
         //puts right cookie back under original parent
         if (rightHalf != null)
@@ -1010,12 +1122,18 @@ public class CookieDrag : MonoBehaviour
             revealOverlay.blocksRaycasts = false;
         }
 
-        //resets target positions
-        anchorTargetPos =
-            leftHalf.position;
+        //resets targets
+        if (leftHalf != null)
+        {
+            anchorTargetPos =
+                leftHalf.position;
+        }
 
-        paperTargetPos =
-            fortunePaperTransform.position;
+        if (fortunePaperTransform != null)
+        {
+            paperTargetPos =
+                fortunePaperTransform.position;
+        }
 
         //clears drag state
         draggedHalf = null;

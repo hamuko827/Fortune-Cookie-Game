@@ -21,10 +21,15 @@ public CookieDrag cookieDrag;
 private bool isSelected = false;
 private bool hasArrived = false;
 
-// So that the player can't click all of the cookies.
+// NOTE: this now means "locked in", not just "a cookie has been clicked".
+// A cookie can be previewed (centered) and swapped for a different one
+// freely - it only stops being swappable once this becomes true, via a
+// second click on the already-centered cookie, or CookieDrag reporting
+// that an actual drag (or AutoOpen/ForceOpen) has started.
 public static bool cookieAlreadyChosen = false;
 
-// Keeps track of which cookie is currently in the center.
+// Keeps track of which cookie is currently in the center (previewed,
+// not necessarily locked in yet).
 private static BowlCookie currentSelectedCookie;
 
 private Camera cam;
@@ -63,6 +68,11 @@ void Update()
     // If the player clicks down on their left mouse button.
     if (Input.GetMouseButtonDown(0))
     {
+        // Once locked in, no more switching (or re-clicking) is
+        // allowed at all - the choice is final.
+        if (cookieAlreadyChosen)
+            return;
+
         // Check the mouse position.
         Vector2 mousePos =
             cam.ScreenToWorldPoint(Input.mousePosition);
@@ -82,25 +92,38 @@ void Update()
         {
             Collider2D topHit = GetTopmostHit(hits);
 
-            // Only select if THIS cookie is the one actually on top.
+            // Only act if THIS cookie is the one actually on top.
             // If some other overlapping cookie is more visible at
             // this point, this instance just does nothing - that
             // other cookie's own Update() will pick up the click
             // on this same frame instead.
             if (topHit != null && topHit.transform == transform)
             {
-                // If this cookie is already selected,
-                // don't do anything.
+                // If this cookie is already the previewed one and
+                // has fully arrived at the center, a SECOND click
+                // on it locks the selection in.
                 if (currentSelectedCookie == this)
-                    return;
+                {
+                    if (hasArrived)
+                    {
+                        LockCurrentSelection();
+                    }
 
+                    return;
+                }
+
+                // Otherwise, this is a switch to a different cookie.
+                //
                 // Remember the old cookie before switching.
                 BowlCookie oldCookie =
                     currentSelectedCookie;
 
-                // Make the new cookie the current cookie.
+                // Make the new cookie the current preview.
+                //
+                // NOTE: cookieAlreadyChosen is NOT set here - previewing
+                // a cookie does not lock it in, only LockCurrentSelection
+                // (second click, or CookieDrag starting a real drag) does.
                 currentSelectedCookie = this;
-                cookieAlreadyChosen = true;
 
                 // Reset the old cookie completely.
                 if (oldCookie != null &&
@@ -230,6 +253,18 @@ public bool HasArrived()
 public bool IsCurrentSelectedCookie()
 {
     return currentSelectedCookie == this;
+}
+
+
+// Locks in whichever cookie is currently selected/previewed, so it
+// can no longer be swapped for a different one. Called either from
+// a second click on the already-centered cookie (see Update()), or
+// from CookieDrag the moment an actual drag (or AutoOpen/ForceOpen)
+// begins - starting to open the cookie should commit to it, not just
+// a second tap.
+public static void LockCurrentSelection()
+{
+    cookieAlreadyChosen = true;
 }
 
 

@@ -9,17 +9,57 @@ public class FortuneDatabase : MonoBehaviour
     public string[] mediocreFortunes;
     public string[] badFortunes;
 
+    //fortune categories for the different reveal jingles
+    public enum FortuneCategory
+    {
+        Good,
+        Mediocre,
+        Bad
+    }
+
+    //stores which category the current fortune belongs to
+    [HideInInspector]
+    public FortuneCategory currentFortuneCategory;
+
+
     //main script that generates a random fortune based on a 0-2 range
     public string GetRandomFortune()
     {
         //0 = good, 1 = mediocre, 2 = bad
-        int category = Random.Range(0, 3); 
+        int category = Random.Range(0, 3);
 
         if (category == 0)
-            return goodFortunes[Random.Range(0, goodFortunes.Length)];
+        {
+            currentFortuneCategory = FortuneCategory.Good;
+
+            return goodFortunes[
+                Random.Range(
+                    0,
+                    goodFortunes.Length
+                )
+            ];
+        }
         else if (category == 1)
-            return mediocreFortunes[Random.Range(0, mediocreFortunes.Length)];
+        {
+            currentFortuneCategory = FortuneCategory.Mediocre;
+
+            return mediocreFortunes[
+                Random.Range(
+                    0,
+                    mediocreFortunes.Length
+                )
+            ];
+        }
         else
-            return badFortunes[Random.Range(0, badFortunes.Length)];
+        {
+            currentFortuneCategory = FortuneCategory.Bad;
+
+            return badFortunes[
+                Random.Range(
+                    0,
+                    badFortunes.Length
+                )
+            ];
+        }
     }
 }

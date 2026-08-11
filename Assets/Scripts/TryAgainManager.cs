@@ -9,9 +9,10 @@ public class TryAgainManager : MonoBehaviour
     public void TryAgain()
     {
         //resets the cookie selection so the player can choose another cookie
-        //(this is a static field, so it survives scene reloads on its own -
-        //has to be cleared explicitly here)
-        BowlCookie.cookieAlreadyChosen = false;
+        //(these are static fields, so they survive scene reloads on their
+        //own - clears both cookieAlreadyChosen and the currently-selected
+        //cookie reference in one go)
+        BowlCookie.ClearCurrentSelection();
 
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
