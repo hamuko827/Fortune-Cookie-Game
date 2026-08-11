@@ -110,6 +110,7 @@ public class CookieDrag : MonoBehaviour
     private bool isFading;
     private bool isShifting;
     private bool isAutoOpening;
+    
 
     private float waitTimer;
     private float dragDistance;
